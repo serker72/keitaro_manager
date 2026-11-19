@@ -9,16 +9,21 @@ init-dirs:
 	mkdir -p $(POSTGRES_DATA_DIR) $(LOGS_DATA_DIR)
 	chown -R $(APP_UID):$(APP_GID) $(POSTGRES_DATA_DIR)
 
-# Generate .env from .env.example
+# Generate .env from .env.example with generated POSTGRES_PASSWORD
 env:
-	@if [ ! -f .env ]; then cp .env.example .env; echo ".env created"; else echo ".env already exists"; fi
+	@if [ ! -f .env ]; then \
+		cp .env.example .env; \
+		sed -i "s/^POSTGRES_PASSWORD=.*/POSTGRES_PASSWORD=$$(openssl rand -hex 24)/" .env; \
+		echo ".env created with generated POSTGRES_PASSWORD"; \
+	else echo ".env already exists"; fi
 
-# Generate .env-test with port shift +20000
+# Generate .env-test from .env: new password, PROJECT_DATA_DIR suffix _test, ports +20000
 env-test:
-	cp .env.example .env-test
-	sed -i 's/^POSTGRES_PORT_HOST=\([0-9]*\)/POSTGRES_PORT_HOST=$$((\1 + 20000))/' .env-test
-	sed -i 's/^BACKEND_PORT_HOST=\([0-9]*\)/BACKEND_PORT_HOST=$$((\1 + 20000))/' .env-test
-	sed -i 's/^FRONTEND_PORT_HOST=\([0-9]*\)/FRONTEND_PORT_HOST=$$((\1 + 20000))/' .env-test
+	@if [ ! -f .env ]; then $(MAKE) --no-print-directory env; fi
+	cp .env .env-test
+	sed -i "s/^POSTGRES_PASSWORD=.*/POSTGRES_PASSWORD=$$(openssl rand -hex 24)/" .env-test
+	sed -i 's#^PROJECT_DATA_DIR=\(.*\)#PROJECT_DATA_DIR=\1_test#' .env-test
+	awk -F= '/^[A-Z_]*_PORT_HOST=/{print $$1"="$$2+20000; next} {print}' .env-test > .env-test.tmp && mv .env-test.tmp .env-test
 
 # Docker compose commands
 up:
