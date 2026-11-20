@@ -87,5 +87,11 @@ class AppProvider(Provider):
         campaign_repo: CampaignRepository,
         stream_offer_repo: StreamOfferRepository,
         keitaro: KeitaroClient,
+        settings: Settings,
     ) -> StreamEditorService:
-        return StreamEditorService(campaign_repo, stream_offer_repo, keitaro)
+        return StreamEditorService(
+            campaign_repo,
+            stream_offer_repo,
+            keitaro,
+            keitaro_public_url=settings.keitaro_public_url,
+        )

@@ -119,10 +119,22 @@ class StreamEditorService:
         campaign_repo: CampaignRepository,
         stream_offer_repo: StreamOfferRepository,
         keitaro: KeitaroClient,
+        keitaro_public_url: str = "",
     ) -> None:
         self._campaign_repo = campaign_repo
         self._stream_offer_repo = stream_offer_repo
         self._keitaro = keitaro
+        self._keitaro_public_url = keitaro_public_url.rstrip("/")
+
+    def _absolute_url(self, path: str | None) -> str | None:
+        """Keitaro returns relative preview paths (/lander/...) — make them absolute."""
+        if not path:
+            return None
+        if path.startswith(("http://", "https://")):
+            return path
+        if not self._keitaro_public_url:
+            return path
+        return f"{self._keitaro_public_url}/{path.lstrip('/')}"
 
     async def _get_campaign(self, campaign_id: int) -> CampaignRecord:
         campaign = await self._campaign_repo.get(campaign_id)
@@ -242,7 +254,7 @@ class StreamEditorService:
                     share=s.share,
                     is_pinned=s.is_pinned,
                     is_removed=s.is_removed,
-                    preview_url=previews.get(s.offer_id),
+                    preview_url=self._absolute_url(previews.get(s.offer_id)),
                 )
             )
 

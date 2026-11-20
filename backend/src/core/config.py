@@ -25,6 +25,9 @@ class Settings(BaseSettings):
     # Keitaro API
     KEITARO_BASE_URL: str = "http://localhost/admin"
     KEITARO_API_KEY: str = ""
+    # Публичный адрес трекера для ссылок в UI (превью офферов, VIEW IN KT).
+    # Если пусто — выводится из KEITARO_BASE_URL без суффикса /admin.
+    KEITARO_PUBLIC_URL: str = ""
 
     @property
     def keitaro_base_url(self) -> str:
@@ -33,6 +36,17 @@ class Settings(BaseSettings):
     @property
     def keitaro_api_key(self) -> str:
         return self.KEITARO_API_KEY
+
+    @property
+    def keitaro_public_url(self) -> str:
+        """Tracker root URL (without /admin) used to build absolute UI links."""
+        if self.KEITARO_PUBLIC_URL.strip():
+            return self.KEITARO_PUBLIC_URL.strip().rstrip("/")
+        base = self.KEITARO_BASE_URL.strip().rstrip("/")
+        for suffix in ("/admin_api/v1", "/admin_api", "/admin"):
+            if base.endswith(suffix):
+                return base[: -len(suffix)]
+        return base
 
     @property
     def database_url(self) -> str:
