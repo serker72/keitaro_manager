@@ -1,6 +1,9 @@
 -include .env
 
-export
+# Экспортируем только PROJECT_DATA_DIR (нужен shell-рецептам).
+# Остальные переменные docker compose читает из .env сам — глобальный export
+# ломает интерполяцию ${PROJECT_DATA_DIR} внутри compose-файла.
+export PROJECT_DATA_DIR
 
 .PHONY: init-dirs env env-test up down logs migrate revision lint test
 
@@ -35,12 +38,12 @@ down:
 logs:
 	docker compose logs -f $(filter-out $@,$(MAKECMDGOALS))
 
-# Alembic migrations
+# Alembic migrations (выполняются в контейнере backend — POSTGRES_HOST=postgres)
 migrate:
-	cd backend && uv run alembic upgrade head
+	docker compose exec backend alembic upgrade head
 
 revision:
-	cd backend && uv run alembic revision --autogenerate -m "$(msg)"
+	docker compose exec backend alembic revision --autogenerate -m "$(msg)"
 
 # Unified linting
 lint:

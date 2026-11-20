@@ -7,7 +7,7 @@ export default defineNuxtConfig({
   // Проксируем /api/** на бэкенд, чтобы не зависеть от CORS
   routeRules: {
     '/api/**': {
-      proxy: `http://${process.env.BACKEND_HOST || 'localhost'}:${process.env.BACKEND_PORT || '33000'}/api/**`,
+      proxy: `${process.env.NUXT_BACKEND_URL || 'http://localhost:33000'}/api/**`,
     },
   },
 

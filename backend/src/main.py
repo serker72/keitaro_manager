@@ -39,6 +39,12 @@ setup_dishka(container, app)
 app.include_router(api_router, prefix="/api")
 
 
+@app.get("/health", tags=["system"])
+async def health() -> dict[str, str]:
+    """Liveness probe for docker-compose healthcheck."""
+    return {"status": "ok"}
+
+
 @app.exception_handler(StreamValidationError)
 async def stream_validation_handler(request: Request, exc: StreamValidationError) -> JSONResponse:
     return JSONResponse(status_code=422, content={"detail": exc.message})

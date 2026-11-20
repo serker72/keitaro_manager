@@ -7,38 +7,57 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: ${POSTGRES_DB}
     ports:
-      - "${POSTGRES_PORT_HOST}:${POSTGRES_PORT}"
+      - "127.0.0.1:${POSTGRES_PORT_HOST}:${POSTGRES_PORT}"
     volumes:
       - ${POSTGRES_DATA_DIR}:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
       interval: 5s
       timeout: 5s
-      retries: 5
+      retries: 10
 
   backend:
     build:
       context: ./backend
       dockerfile: Dockerfile
+      args:
+        APP_UID: ${APP_UID}
+        APP_GID: ${APP_GID}
     container_name: km_backend
     ports:
-      - "${BACKEND_PORT_HOST}:8000"
+      - "127.0.0.1:${BACKEND_PORT_HOST}:8000"
     env_file:
       - .env
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
     volumes:
       - ${LOGS_DATA_DIR}:/app/logs
     depends_on:
       postgres:
         condition: service_healthy
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health')"
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
 
   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+      args:
+        NUXT_BACKEND_URL: http://backend:8000
     container_name: km_frontend
     ports:
-      - "${FRONTEND_PORT_HOST}:3000"
-    env_file:
-      - .env
+      - "127.0.0.1:${FRONTEND_PORT_HOST}:3000"
+    environment:
+      NUXT_PUBLIC_KEITARO_ADMIN_URL: ${KEITARO_BASE_URL}
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
