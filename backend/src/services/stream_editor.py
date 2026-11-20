@@ -20,6 +20,10 @@ from src.schemas.keitaro import (
 class StreamValidationError(Exception):
     """Business validation error (shares != 100, stream not found, etc.)."""
 
+    def __init__(self, message: str) -> None:
+        self.message = message
+        super().__init__(message)
+
 
 def recalculate_weights(offers: list[StreamOfferRow]) -> list[StreamOfferRow]:
     """Pure weight algorithm (mirrored on the frontend).

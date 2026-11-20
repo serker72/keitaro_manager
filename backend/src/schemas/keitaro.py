@@ -157,12 +157,12 @@ class Stream(KeitaroModel):
     """Stream (flow) as returned by the API."""
 
     id: int
-    type: Literal["forced", "regular", "default"] | None = None
+    type: Literal["forced", "regular", "default"]
     name: str
     campaign_id: int
     position: int | None = None
     weight: float | None = None
-    state: Literal["active", "disabled"] | None = None
+    state: Literal["active", "disabled"] = "active"
     schema_: Literal["landings", "redirect", "action"] | None = Field(default=None, alias="schema")
     action_type: str | None = None
     action_payload: str | dict[str, Any] | None = None

@@ -27,6 +27,14 @@ class Settings(BaseSettings):
     KEITARO_API_KEY: str = ""
 
     @property
+    def keitaro_base_url(self) -> str:
+        return self.KEITARO_BASE_URL
+
+    @property
+    def keitaro_api_key(self) -> str:
+        return self.KEITARO_API_KEY
+
+    @property
     def database_url(self) -> str:
         """Build async database URL using psycopg3 dialect."""
         return (
