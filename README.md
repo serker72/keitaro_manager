@@ -99,6 +99,32 @@ Admin API Keitaro; локально хранится только последн
 
 ---
 
+## Авторизация
+
+> Авторизация добавлена **проактивно** (в ТЗ её не было): приложение проксирует запросы к Admin API
+> Keitaro с API-ключом, поэтому публичный доступ к UI означал бы публичный доступ к трекеру.
+
+**Дефолтные креды:** `admin` / `change_me` (значения по умолчанию в `.env.example`).
+`make env` генерирует случайный `USER_PASSWORD` и печатает его в консоль — если нужен пароль
+из коробки, поставьте в `.env` `USER_PASSWORD=change_me`.
+
+Реализация — **stateless, без БД**:
+
+* `AuthService` (`backend/src/services/auth.py`) сравнивает логин и пароль из `Settings`
+  через `secrets.compare_digest()` (защита от timing-атак) и выпускает подписанный JWT (PyJWT, HS256).
+* Токен кладётся в **httpOnly cookie** (`SameSite=Lax`, TTL `AUTH_TOKEN_TTL_MINUTES`, по умолчанию 12 ч).
+  Альтернативно принимается `Authorization: Bearer <token>`.
+* Эндпоинты: `POST /api/auth/login`, `POST /api/auth/logout`, `GET /api/auth/me`.
+* Роутеры `dictionaries`, `campaigns`, `streams` защищены единой зависимостью
+  `verify_auth` на уровне `APIRouter` (`dependencies=[Depends(verify_auth)]`).
+* Frontend: страница `/login`, глобальный `middleware/auth.global.ts` (редирект на `/login`
+  без валидной сессии), кнопка `Logout` в шапке.
+
+Переменные окружения: `USER_LOGIN`, `USER_PASSWORD`, `AUTH_SECRET_KEY` (генерируется `make env`
+через `openssl rand -hex 32`).
+
+---
+
 ## Запуск
 
 ### Требования
@@ -110,7 +136,8 @@ Admin API Keitaro; локально хранится только последн
 ### Шаги
 
 ```bash
-make env            # создаёт .env из .env.example, генерирует POSTGRES_PASSWORD (openssl rand -hex 24)
+make env            # создаёт .env, генерирует POSTGRES_PASSWORD, USER_PASSWORD, AUTH_SECRET_KEY
+                    # и печатает логин/пароль пользователя в консоль
 ```
 
 Заполнить в `.env` доступы к трекеру:
@@ -129,12 +156,14 @@ make migrate        # alembic upgrade head внутри контейнера bac
 Приложение: **http://127.0.0.1:3000** (порт задаётся `FRONTEND_PORT_HOST`).
 Backend: `http://127.0.0.1:33000` (`BACKEND_PORT_HOST`), документация — `/docs`.
 
+Вход: логин `USER_LOGIN` и пароль `USER_PASSWORD` из `.env` (по умолчанию `admin` / `change_me`).
+
 ### Основные команды Makefile
 
 | Команда | Действие |
 |---------|----------|
-| `make env` | создать `.env` с сгенерированным паролем БД |
-| `make env-test` | создать `.env-test` из `.env`: новый пароль, `PROJECT_DATA_DIR` + суффикс `_test`, хост-порты +20000 |
+| `make env` | создать `.env`: генерирует `POSTGRES_PASSWORD`, `USER_PASSWORD`, `AUTH_SECRET_KEY`, печатает креды |
+| `make env-test` | создать `.env-test` из `.env`: новые пароли и секрет, `PROJECT_DATA_DIR` + `_test`, хост-порты +20000 |
 | `make init-dirs` | создать каталоги данных с правами `APP_UID:APP_GID` |
 | `make up` / `make down` | поднять / остановить стек |
 | `make logs` / `make logs backend` | потоковые логи (с фильтром по сервису) |
@@ -176,6 +205,9 @@ make test    # backend: pytest (алгоритм весов: pin, pin=100%, remo
 
 | Метод | Путь | Назначение |
 |-------|------|-----------|
+| `POST` | `/api/auth/login` | вход (выставляет httpOnly cookie с JWT) |
+| `POST` | `/api/auth/logout` | выход (удаляет cookie) |
+| `GET` | `/api/auth/me` | текущий пользователь (401 без сессии) |
 | `GET` | `/api/dictionaries` | домены, группы кампаний, источники трафика, офферы |
 | `GET` | `/api/campaigns` | список локально сохранённых кампаний |
 | `POST` | `/api/campaigns` | создание кампании + Flow 1 + Flow 2 |
@@ -183,7 +215,7 @@ make test    # backend: pytest (алгоритм весов: pin, pin=100%, remo
 | `PUT` | `/api/campaigns/{id}/streams/{stream_id}/push` | отправка офферов в Keitaro |
 
 Ошибки трекера (`400/401/402/404/406/500`) маппятся в соответствующие HTTP-ответы,
-ошибки бизнес-валидации — в `422` с понятным сообщением.
+ошибки бизнес-валидации — в `422`, отсутствие/недействительность сессии — в `401`.
 
 ---
 

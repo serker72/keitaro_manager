@@ -12,21 +12,32 @@ init-dirs:
 	mkdir -p $(POSTGRES_DATA_DIR) $(LOGS_DATA_DIR)
 	chown -R $(APP_UID):$(APP_GID) $(POSTGRES_DATA_DIR)
 
-# Generate .env from .env.example with generated POSTGRES_PASSWORD
+# Generate .env from .env.example with generated POSTGRES_PASSWORD, USER_PASSWORD, AUTH_SECRET_KEY
 env:
 	@if [ ! -f .env ]; then \
 		cp .env.example .env; \
 		sed -i "s/^POSTGRES_PASSWORD=.*/POSTGRES_PASSWORD=$$(openssl rand -hex 24)/" .env; \
-		echo ".env created with generated POSTGRES_PASSWORD"; \
+		sed -i "s/^USER_PASSWORD=.*/USER_PASSWORD=$$(openssl rand -base64 18 | tr -d '/+=' | cut -c1-20)/" .env; \
+		sed -i "s/^AUTH_SECRET_KEY=.*/AUTH_SECRET_KEY=$$(openssl rand -hex 32)/" .env; \
+		echo ".env created"; \
+		echo "  POSTGRES_PASSWORD  — сгенерирован"; \
+		echo "  AUTH_SECRET_KEY    — сгенерирован"; \
+		echo "  USER_LOGIN:    $$(grep '^USER_LOGIN=' .env | cut -d= -f2-)"; \
+		echo "  USER_PASSWORD: $$(grep '^USER_PASSWORD=' .env | cut -d= -f2-)"; \
 	else echo ".env already exists"; fi
 
-# Generate .env-test from .env: new password, PROJECT_DATA_DIR suffix _test, ports +20000
+# Generate .env-test from .env: new secrets, PROJECT_DATA_DIR suffix _test, ports +20000
 env-test:
 	@if [ ! -f .env ]; then $(MAKE) --no-print-directory env; fi
 	cp .env .env-test
 	sed -i "s/^POSTGRES_PASSWORD=.*/POSTGRES_PASSWORD=$$(openssl rand -hex 24)/" .env-test
+	sed -i "s/^USER_PASSWORD=.*/USER_PASSWORD=$$(openssl rand -base64 18 | tr -d '/+=' | cut -c1-20)/" .env-test
+	sed -i "s/^AUTH_SECRET_KEY=.*/AUTH_SECRET_KEY=$$(openssl rand -hex 32)/" .env-test
 	sed -i 's#^PROJECT_DATA_DIR=\(.*\)#PROJECT_DATA_DIR=\1_test#' .env-test
 	awk -F= '/^[A-Z_]*_PORT_HOST=/{print $$1"="$$2+20000; next} {print}' .env-test > .env-test.tmp && mv .env-test.tmp .env-test
+	@echo ".env-test created"
+	@echo "  USER_LOGIN:    $$(grep '^USER_LOGIN=' .env-test | cut -d= -f2-)"
+	@echo "  USER_PASSWORD: $$(grep '^USER_PASSWORD=' .env-test | cut -d= -f2-)"
 
 # Docker compose commands
 up:
