@@ -29,6 +29,14 @@ class Settings(BaseSettings):
     # Если пусто — выводится из KEITARO_BASE_URL без суффикса /admin.
     KEITARO_PUBLIC_URL: str = ""
 
+    # Auth (stateless JWT, без БД)
+    USER_LOGIN: str = "admin"
+    USER_PASSWORD: str = "change_me"
+    AUTH_SECRET_KEY: str = "change_me_random_secret_key"
+    AUTH_TOKEN_TTL_MINUTES: int = 720
+    AUTH_COOKIE_NAME: str = "km_auth"
+    AUTH_COOKIE_SECURE: bool = False
+
     @property
     def keitaro_base_url(self) -> str:
         return self.KEITARO_BASE_URL

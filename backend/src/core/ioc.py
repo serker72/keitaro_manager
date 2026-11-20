@@ -11,6 +11,7 @@ from src.clients.keitaro import KeitaroClient
 from src.core.config import Settings
 from src.repositories.campaign import CampaignRepository
 from src.repositories.stream_offer import StreamOfferRepository
+from src.services.auth import AuthService
 from src.services.campaign import CampaignService
 from src.services.dictionaries import DictionaryService
 from src.services.stream_editor import StreamEditorService
@@ -46,6 +47,10 @@ class AppProvider(Provider):
         client.base_url = f"{base}/admin_api/v1"
         client.headers["Api-Key"] = settings.KEITARO_API_KEY
         return KeitaroClient(client)
+
+    @provide(scope=Scope.APP)
+    def get_auth_service(self, settings: Settings) -> AuthService:
+        return AuthService(settings)
 
     # -- Scope.REQUEST --
 

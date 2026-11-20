@@ -12,6 +12,7 @@ from fastapi.responses import JSONResponse
 from src.api.routes import api_router
 from src.clients.keitaro import KeitaroAPIError
 from src.core.ioc import AppProvider
+from src.services.auth import AuthError
 from src.services.stream_editor import StreamValidationError
 
 container: AsyncContainer = make_async_container(AppProvider())
@@ -43,6 +44,16 @@ app.include_router(api_router, prefix="/api")
 async def health() -> dict[str, str]:
     """Liveness probe for docker-compose healthcheck."""
     return {"status": "ok"}
+
+
+@app.exception_handler(AuthError)
+async def auth_error_handler(request: Request, exc: AuthError) -> JSONResponse:
+    """401 для неверных кредов и недействительных токенов."""
+    return JSONResponse(
+        status_code=401,
+        content={"detail": exc.message},
+        headers={"WWW-Authenticate": "Bearer"},
+    )
 
 
 @app.exception_handler(StreamValidationError)
