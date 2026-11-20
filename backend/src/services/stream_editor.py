@@ -62,6 +62,7 @@ def recalculate_weights(offers: list[StreamOfferRow]) -> list[StreamOfferRow]:
                 share=share,
                 is_pinned=o.is_pinned,
                 is_removed=o.is_removed,
+                preview_url=o.preview_url,
             )
         )
     return result
@@ -229,6 +230,8 @@ class StreamEditorService:
         """Assemble editor response from Keitaro metadata + local state."""
         kt_streams = await self._keitaro.get_streams(campaign.keitaro_campaign_id)
         local_states = await self._stream_offer_repo.get_by_campaign(campaign.id)
+        # Preview links are not part of the stream payload — take them from the offers dictionary.
+        previews = {o.id: o.preview_path for o in await self._keitaro.get_offers()}
 
         by_stream: dict[int, list[StreamOfferRow]] = {}
         for s in local_states:
@@ -239,6 +242,7 @@ class StreamEditorService:
                     share=s.share,
                     is_pinned=s.is_pinned,
                     is_removed=s.is_removed,
+                    preview_url=previews.get(s.offer_id),
                 )
             )
 

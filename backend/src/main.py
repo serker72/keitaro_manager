@@ -3,7 +3,7 @@
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
-from dishka import make_async_container
+from dishka import AsyncContainer, make_async_container
 from dishka.integrations.fastapi import setup_dishka
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -14,13 +14,14 @@ from src.clients.keitaro import KeitaroAPIError
 from src.core.ioc import AppProvider
 from src.services.stream_editor import StreamValidationError
 
+container: AsyncContainer = make_async_container(AppProvider())
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
-    app.state.container = make_async_container(AppProvider())
-    setup_dishka(app.state.container, app)
+    """Application lifespan: close DI container (and its httpx pool) on shutdown."""
     yield
-    await app.state.container.close()
+    await container.close()
 
 
 app = FastAPI(title="Keitaro Manager API", version="0.1.0", lifespan=lifespan)
@@ -32,6 +33,8 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+setup_dishka(container, app)
 
 app.include_router(api_router, prefix="/api")
 

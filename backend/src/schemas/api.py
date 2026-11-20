@@ -8,11 +8,32 @@ class ApiModel(BaseModel):
     model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True, from_attributes=True)
 
 
+class DomainOption(ApiModel):
+    id: int
+    name: str
+
+
+class GroupOption(ApiModel):
+    id: int
+    name: str
+
+
+class SourceOption(ApiModel):
+    id: int
+    name: str
+
+
+class OfferOption(ApiModel):
+    id: int
+    name: str
+    preview_path: str | None = None
+
+
 class DictionariesResponse(ApiModel):
-    domains: list[dict[str, object]]
-    groups: list[dict[str, object]]
-    traffic_sources: list[dict[str, object]]
-    offers: list[dict[str, object]]
+    domains: list[DomainOption]
+    groups: list[GroupOption]
+    traffic_sources: list[SourceOption]
+    offers: list[OfferOption]
 
 
 class CampaignCreateRequest(ApiModel):
@@ -43,6 +64,7 @@ class StreamOfferRow(ApiModel):
     share: int
     is_pinned: bool
     is_removed: bool
+    preview_url: str | None = None
 
 
 class StreamInfo(ApiModel):
