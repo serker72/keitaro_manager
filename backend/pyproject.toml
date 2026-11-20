@@ -43,6 +43,10 @@ python_version = "3.13"
 strict = true
 plugins = ["pydantic.mypy"]
 
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
+
 [[tool.mypy.overrides]]
 module = ["alembic.*"]
 ignore_missing_imports = true

@@ -102,14 +102,26 @@ class CampaignRequest(KeitaroModel):
 
 
 class Filter(KeitaroModel):
-    """Filter as returned in Stream responses (payload is a raw string there)."""
+    """Filter as returned in Stream responses.
+
+    Spec says payload is a string, but the live API returns a list of values
+    (e.g. ["US"]) and integer oid — both variants are accepted.
+    """
 
     id: int | None = None
     stream_id: int | None = None
     name: str
-    mode: str
-    payload: str | None = None
-    oid: str | None = None
+    mode: Literal["accept", "reject"]
+    payload: list[str] | str | None = None
+    oid: int | str | None = None
+
+    def payload_values(self) -> list[str]:
+        """Normalized payload as a list of strings."""
+        if self.payload is None:
+            return []
+        if isinstance(self.payload, list):
+            return [str(v) for v in self.payload]
+        return [self.payload]
 
 
 class FilterStreamRequest(KeitaroModel):
@@ -145,13 +157,13 @@ class Stream(KeitaroModel):
     """Stream (flow) as returned by the API."""
 
     id: int
-    type: str
+    type: Literal["forced", "regular", "default"] | None = None
     name: str
     campaign_id: int
     position: int | None = None
     weight: float | None = None
-    state: str = "active"
-    schema_: str | None = Field(default=None, alias="schema")
+    state: Literal["active", "disabled"] | None = None
+    schema_: Literal["landings", "redirect", "action"] | None = Field(default=None, alias="schema")
     action_type: str | None = None
     action_payload: str | dict[str, Any] | None = None
     action_options: dict[str, Any] | None = None
