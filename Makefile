@@ -5,12 +5,45 @@
 # ломает интерполяцию ${PROJECT_DATA_DIR} внутри compose-файла.
 export PROJECT_DATA_DIR
 
-.PHONY: init-dirs env env-test up down logs migrate revision lint test
+# uid/gid пользователя postgres в образе postgres:16-alpine (можно переопределить в .env)
+PG_UID ?= 70
+PG_GID ?= 70
 
-# Create data directories with proper permissions
+.DEFAULT_GOAL := help
+
+.PHONY: help init-dirs env env-test up down logs migrate revision lint test
+
+help:
+	@echo "Keitaro Manager — доступные команды:"
+	@echo "  make env            создать .env (генерирует пароли и AUTH_SECRET_KEY, печатает креды)"
+	@echo "  make env-test       создать .env-test (порты +20000, PROJECT_DATA_DIR с суффиксом _test)"
+	@echo "  make init-dirs      создать каталоги данных и выставить владельцев"
+	@echo "  make up             собрать и запустить стек (postgres + backend + frontend)"
+	@echo "  make down           остановить стек"
+	@echo "  make logs [сервис]  потоковые логи (например: make logs backend)"
+	@echo "  make migrate        применить миграции Alembic"
+	@echo "  make revision msg=\"...\"  сгенерировать миграцию"
+	@echo "  make lint           ruff + mypy (backend), eslint + typecheck (frontend)"
+	@echo "  make test           pytest (backend)"
+
+# Create data directories with proper owners.
+# Каталог БД принадлежит пользователю postgres внутри alpine-образа (uid 70),
+# поэтому chown выполняется в контейнере от root: локальный пользователь
+# не имеет прав на уже инициализированный drwx------ каталог.
 init-dirs:
 	mkdir -p $(POSTGRES_DATA_DIR) $(LOGS_DATA_DIR)
-	chown -R $(APP_UID):$(APP_GID) $(POSTGRES_DATA_DIR)
+	@docker run --rm \
+		-v "$(POSTGRES_DATA_DIR):/pgdata" \
+		-v "$(LOGS_DATA_DIR):/logs" \
+		alpine:3 sh -c '\
+			if [ -z "$$(ls -A /pgdata 2>/dev/null)" ]; then \
+				chown -R $(PG_UID):$(PG_GID) /pgdata; \
+				echo "  $(POSTGRES_DATA_DIR) -> $(PG_UID):$(PG_GID)"; \
+			else \
+				echo "  $(POSTGRES_DATA_DIR) уже инициализирован — владелец не менялся"; \
+			fi; \
+			chown -R $(APP_UID):$(APP_GID) /logs; \
+			echo "  $(LOGS_DATA_DIR) -> $(APP_UID):$(APP_GID)"'
 
 # Generate .env from .env.example with generated POSTGRES_PASSWORD, USER_PASSWORD, AUTH_SECRET_KEY
 env:
