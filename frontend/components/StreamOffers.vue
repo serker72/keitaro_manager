@@ -20,6 +20,23 @@ function clone(rows: StreamOfferRow[]): StreamOfferRow[] {
   return rows.map((o) => ({ ...o }))
 }
 
+// После FETCH STREAMS FROM KT (или PUSH) родитель присылает новые props.stream.offers.
+// Компонент переиспользуется (key = streamId), поэтому состояния нужно синхронизировать.
+watch(
+  () => props.stream.offers,
+  (rows) => {
+    const incoming = clone(rows)
+    if (isDirty(savedOffers.value, incoming)) {
+      // Данные на бэкенде изменились — сбрасываем черновик на актуальное состояние.
+      savedOffers.value = incoming
+      draftOffers.value = clone(incoming)
+      editingOfferId.value = null
+      pushError.value = null
+    }
+  },
+  { deep: true },
+)
+
 const dirty = computed(() => isDirty(savedOffers.value, draftOffers.value))
 const sharesSum = computed(() => activeSharesSum(draftOffers.value))
 const sharesValid = computed(() => sharesSum.value === 100)
